@@ -1,0 +1,12 @@
+# Core dependencies
+python-owasp-zap-v2.4>=0.0.21
+jinja2>=3.1.2
+pyyaml>=6.0.1
+
+# PDF generation (optional – install one)
+weasyprint>=60.0        # preferred
+# wkhtmltopdf            # alternative (CLI tool, not a pip package)
+
+# Utilities
+requests>=2.31.0
+python-dateutil>=2.8.2

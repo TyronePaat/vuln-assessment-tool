@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vulnerability Assessment Report</title>
+<style>
+  :root {
+    --navy:    #0b2545;
+    --blue:    #1b4f8a;
+    --mid:     #2e6db4;
+    --accent:  #3b9eff;
+    --light:   #f0f5fb;
+    --white:   #ffffff;
+    --border:  #c8d9ee;
+    --text:    #1a2e4a;
+    --muted:   #5a738f;
+    --high:    #c0392b;
+    --medium:  #e67e22;
+    --low:     #27ae60;
+    --info:    #2980b9;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--light); color: var(--text); }
+
+  /* ── Cover header ── */
+  .cover {
+    background: var(--navy);
+    color: var(--white);
+    padding: 2.5rem 2.5rem 2rem;
+    border-bottom: 4px solid var(--accent);
+  }
+  .cover-top { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; }
+  .cover-top .shield { font-size: 2.4rem; filter: drop-shadow(0 0 10px rgba(59,158,255,.6)); }
+  .cover-org { font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.5); margin-bottom: .2rem; }
+  .cover-title { font-size: 1.5rem; font-weight: 800; letter-spacing: .01em; }
+  .cover-sub { font-size: .85rem; color: rgba(255,255,255,.6); margin-top: .15rem; }
+
+  .cover-meta {
+    display: flex; gap: 2rem; flex-wrap: wrap;
+    font-size: .8rem; color: rgba(255,255,255,.7);
+  }
+  .cover-meta dt { font-weight: 600; color: rgba(255,255,255,.45); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .15rem; }
+
+  /* ── Summary bar ── */
+  .summary-bar {
+    background: var(--blue);
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+  }
+  .summary-stat {
+    padding: .9rem 2rem;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,.12);
+    flex: 1;
+    min-width: 110px;
+  }
+  .summary-stat:last-child { border-right: none; }
+  .summary-stat .num {
+    font-size: 1.8rem; font-weight: 800; color: var(--white);
+    line-height: 1;
+  }
+  .summary-stat .num.high   { color: #ff7b6b; }
+  .summary-stat .num.medium { color: #f5a347; }
+  .summary-stat .num.low    { color: #6ee08a; }
+  .summary-stat .lbl { font-size: .68rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .07em; margin-top: .25rem; }
+
+  /* ── Content ── */
+  .content { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
+
+  .section-heading {
+    font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--mid); border-bottom: 2px solid var(--border);
+    padding-bottom: .4rem; margin: 2rem 0 1rem;
+    display: flex; align-items: center; gap: .5rem;
+  }
+
+  /* ── OWASP coverage ── */
+  .owasp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: .5rem;
+    margin-bottom: .5rem;
+  }
+  .owasp-item {
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: .55rem .75rem;
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    background: var(--white);
+    font-size: .82rem;
+  }
+  .owasp-id {
+    font-weight: 700; font-size: .72rem;
+    background: var(--blue); color: var(--white);
+    padding: .15rem .45rem; border-radius: 3px;
+    white-space: nowrap;
+  }
+  .owasp-status { margin-left: auto; font-size: .85rem; }
+
+  /* ── Finding cards ── */
+  .finding {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 5px solid;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+  .finding.High   { border-left-color: var(--high); }
+  .finding.Medium { border-left-color: var(--medium); }
+  .finding.Low    { border-left-color: var(--low); }
+  .finding.Informational { border-left-color: var(--info); }
+
+  .finding-header {
+    padding: .75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    background: #fafcff;
+  }
+  .finding-name { font-size: .92rem; font-weight: 700; flex: 1; }
+
+  .badge {
+    font-size: .68rem; font-weight: 700; padding: .2rem .55rem;
+    border-radius: 99px; white-space: nowrap;
+  }
+  .badge.High   { background: #fdf0ef; color: var(--high); border: 1px solid #f0b4af; }
+  .badge.Medium { background: #fef6ec; color: var(--medium); border: 1px solid #f5d3a5; }
+  .badge.Low    { background: #edfbf2; color: var(--low); border: 1px solid #a8e8bc; }
+
+  .owasp-tag {
+    font-size: .68rem; font-weight: 700;
+    padding: .2rem .55rem; border-radius: 99px;
+    background: #e8f0fb; color: var(--mid); border: 1px solid #bad0ef;
+  }
+  .cvss-tag {
+    font-size: .72rem; font-weight: 700;
+    padding: .2rem .55rem; border-radius: 99px;
+    background: var(--navy); color: var(--white);
+  }
+
+  .finding-body { padding: .9rem 1rem; }
+  .finding-row { margin-bottom: .65rem; }
+  .finding-label {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted); margin-bottom: .2rem;
+  }
+  .finding-value { font-size: .85rem; line-height: 1.55; }
+  .finding-url {
+    font-family: 'Consolas','Courier New',monospace;
+    font-size: .78rem; color: var(--mid);
+    word-break: break-all;
+  }
+  .solution-text { font-size: .85rem; line-height: 1.55; color: #1e4a1e; }
+
+  /* ── Footer ── */
+  .report-footer {
+    background: var(--navy);
+    color: rgba(255,255,255,.45);
+    font-size: .7rem;
+    text-align: center;
+    padding: .85rem;
+    margin-top: 2rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding: .85rem 2rem;
+  }
+
+  .disclaimer-box {
+    background: #fffbe8;
+    border: 1px solid #e0cb7a;
+    border-left: 4px solid #c9a800;
+    border-radius: 5px;
+    padding: .75rem 1rem;
+    font-size: .78rem;
+    color: #5a4a00;
+    line-height: 1.6;
+    margin-top: 2rem;
+  }
+
+  @media print {
+    .finding { page-break-inside: avoid; }
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .summary-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-top">
+    <span class="shield">🛡️</span>
+    <div>
+      <div class="cover-org">Government Cybersecurity Division</div>
+      <div class="cover-title">Vulnerability Assessment Report</div>
+      <div class="cover-sub">Web Application Security Assessment · OWASP Top 10 (2021)</div>
+    </div>
+  </div>
+  <dl class="cover-meta">
+    <div>
+      <dt>Target</dt>
+      <dd>https://paslaten.online/</dd>
+    </div>
+    <div>
+      <dt>Scan Date</dt>
+      <dd>2026-06-24 11:18:18</dd>
+    </div>
+    <div>
+      <dt>Scanner</dt>
+      <dd>VA Tool v1.0 / OWASP ZAP</dd>
+    </div>
+    <div>
+      <dt>Classification</dt>
+      <dd>OFFICIAL — SENSITIVE</dd>
+    </div>
+  </dl>
+</div>
+
+<div class="summary-bar">
+  <div class="summary-stat">
+    <div class="num">7</div>
+    <div class="lbl">Total Findings</div>
+  </div>
+  <div class="summary-stat">
+    <div class="num high">1</div>
+    <div class="lbl">High</div>
+  </div>
+  <div class="summary-stat">
+    <div class="num medium">2</div>
+    <div class="lbl">Medium</div>
+  </div>
+  <div class="summary-stat">
+    <div class="num low">3</div>
+    <div class="lbl">Low</div>
+  </div>
+  <div class="summary-stat">
+    <div class="num" style="color:rgba(255,255,255,.6)">1</div>
+    <div class="lbl">Info</div>
+  </div>
+</div>
+
+<div class="content">
+
+  <div class="section-heading">📋 OWASP Top 10 Coverage</div>
+  <div class="owasp-grid">
+    
+    
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A01</span>
+      <span>Broken Access Control</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A02</span>
+      <span>Cryptographic Failures</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A03</span>
+      <span>Injection</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A04</span>
+      <span>Insecure Design</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A05</span>
+      <span>Security Misconfiguration</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A06</span>
+      <span>Vulnerable &amp; Outdated Components</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A07</span>
+      <span>Identification &amp; Auth Failures</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A08</span>
+      <span>Software &amp; Data Integrity Failures</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A09</span>
+      <span>Security Logging &amp; Monitoring Failures</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+    <div class="owasp-item">
+      <span class="owasp-id">A10</span>
+      <span>Server-Side Request Forgery</span>
+      
+      <span class="owasp-status" style="color:#27ae60">✓</span>
+      
+    </div>
+    
+  </div>
+
+  <div class="section-heading">🔍 Findings Detail (7 findings)</div>
+
+  
+  <div class="finding High">
+    <div class="finding-header">
+      <div class="finding-name">1. Cross Site Scripting (Reflected)</div>
+      <span class="badge High">High</span>
+      <span class="owasp-tag">A03:2021 · Injection</span>
+      <span class="cvss-tag">Score 4</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-row">
+        <div class="finding-label">Description</div>
+        <div class="finding-value">Cross-site Scripting (XSS) is an attack technique that involves echoing attacker-supplied code into a user&#39;s browser instance.</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Affected URL</div>
+        <div class="finding-url">http://testsite.local/search?q=&lt;script&gt;alert(1)&lt;/script&gt;</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Recommended Fix</div>
+        <div class="solution-text">Phase: Architecture and Design
+Use a vetted library or framework that does not allow this weakness to occur, or provides constructs that make this weakness easier to avoid.</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="finding Medium">
+    <div class="finding-header">
+      <div class="finding-name">2. Absence of Anti-CSRF Tokens</div>
+      <span class="badge Medium">Medium</span>
+      <span class="owasp-tag">A07:2021 · Identification and Authentication Failures</span>
+      <span class="cvss-tag">Score 3</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-row">
+        <div class="finding-label">Description</div>
+        <div class="finding-value">No Anti-CSRF tokens were found in a HTML submission form. A cross-site request forgery is an attack that involves forcing a victim to send an HTTP request to a target destination.</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Affected URL</div>
+        <div class="finding-url">http://testsite.local/login</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Recommended Fix</div>
+        <div class="solution-text">Phase: Architecture and Design
+Use a vetted library or framework that does not allow this weakness to occur.</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="finding Medium">
+    <div class="finding-header">
+      <div class="finding-name">3. Cookie No HttpOnly Flag</div>
+      <span class="badge Medium">Medium</span>
+      <span class="owasp-tag">A07:2021 · Identification and Authentication Failures</span>
+      <span class="cvss-tag">Score 3</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-row">
+        <div class="finding-label">Description</div>
+        <div class="finding-value">A cookie has been set without the HttpOnly flag, which means that the cookie can be accessed by JavaScript.</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Affected URL</div>
+        <div class="finding-url">http://testsite.local/</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Recommended Fix</div>
+        <div class="solution-text">Ensure that the HttpOnly flag is set for all cookies.</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="finding Low">
+    <div class="finding-header">
+      <div class="finding-name">4. Web Browser XSS Protection Not Enabled</div>
+      <span class="badge Low">Low</span>
+      <span class="owasp-tag">A05:2021 · Security Misconfiguration</span>
+      <span class="cvss-tag">Score 2</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-row">
+        <div class="finding-label">Description</div>
+        <div class="finding-value">Web Browser XSS Protection is not enabled, or is disabled by the configuration of the &#39;X-XSS-Protection&#39; HTTP response header on the web server.</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Affected URL</div>
+        <div class="finding-url">http://testsite.local/</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Recommended Fix</div>
+        <div class="solution-text">Ensure that the web browser&#39;s XSS filter is enabled, by setting the X-XSS-Protection HTTP response header to &#39;1&#39;.</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="finding Low">
+    <div class="finding-header">
+      <div class="finding-name">5. X-Content-Type-Options Header Missing</div>
+      <span class="badge Low">Low</span>
+      <span class="owasp-tag">A05:2021 · Security Misconfiguration</span>
+      <span class="cvss-tag">Score 2</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-row">
+        <div class="finding-label">Description</div>
+        <div class="finding-value">The Anti-MIME-Sniffing header X-Content-Type-Options was not set to &#39;nosniff&#39;.</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Affected URL</div>
+        <div class="finding-url">http://testsite.local/about</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Recommended Fix</div>
+        <div class="solution-text">Ensure that the application/web server sets the Content-Type header appropriately.</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="finding Low">
+    <div class="finding-header">
+      <div class="finding-name">6. Strict-Transport-Security Header Not Set</div>
+      <span class="badge Low">Low</span>
+      <span class="owasp-tag">A02:2021 · Cryptographic Failures</span>
+      <span class="cvss-tag">Score 2</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-row">
+        <div class="finding-label">Description</div>
+        <div class="finding-value">HTTP Strict Transport Security (HSTS) is a web security policy mechanism whereby a web server declares that complying user agents should only interact with it using secure HTTPS connections.</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Affected URL</div>
+        <div class="finding-url">http://testsite.local/</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Recommended Fix</div>
+        <div class="solution-text">Ensure that your web server, application server, or application framework enforces the use of HSTS.</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="finding Informational">
+    <div class="finding-header">
+      <div class="finding-name">7. Timestamp Disclosure - Unix</div>
+      <span class="badge Informational">Informational</span>
+      <span class="owasp-tag">A05:2021 · Security Misconfiguration</span>
+      <span class="cvss-tag">Score 1</span>
+    </div>
+    <div class="finding-body">
+      <div class="finding-row">
+        <div class="finding-label">Description</div>
+        <div class="finding-value">A timestamp was disclosed by the application/web server. Information such as the time the server was last restarted could be used.</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Affected URL</div>
+        <div class="finding-url">http://testsite.local/api/status</div>
+      </div>
+      <div class="finding-row">
+        <div class="finding-label">Recommended Fix</div>
+        <div class="solution-text">Manually confirm that the timestamp data is not sensitive.</div>
+      </div>
+    </div>
+  </div>
+  
+
+  <div class="disclaimer-box">
+    <strong>⚠️ Disclaimer:</strong>
+    This report was generated by an automated scanning tool and may not capture all vulnerabilities.
+    Results should be validated by a qualified security professional before remediation prioritisation.
+    This document is classified OFFICIAL–SENSITIVE and must not be shared outside authorised personnel.
+  </div>
+
+</div>
+
+<div class="report-footer">
+  <span>VA Tool — Web Application Vulnerability Assessment</span>
+  <span>Generated: 2026-06-24 11:18:18</span>
+  <span>OFFICIAL — SENSITIVE · Do not distribute</span>
+</div>
+
+</body>
+</html>

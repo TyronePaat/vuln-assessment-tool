@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────
+# settings.yaml – VA Tool configuration
+# ─────────────────────────────────────────────────────────────
+#
+# IMPORTANT: Only scan systems you are explicitly authorised
+# to test. Obtain a signed Rules of Engagement document first.
+# ─────────────────────────────────────────────────────────────
+
+# Target web application
+target:
+  url: "https://paslaten.online/"          # swap for your staging URL
+  name: "Government Portal – Staging"
+  environment: "staging"                # staging | uat | production (⚠ care!)
+
+# OWASP ZAP daemon connection
+zap:
+  proxy: "http://127.0.0.1:8080"
+  api_key: "changeme"                   # match your ZAP API key setting
+  ajax_spider: false                    # enable for JS-heavy SPAs
+
+# Scan behaviour
+scan:
+  max_depth: 5                          # spider crawl depth
+  max_children: 10                      # max child URLs per node
+  active_scan_policy: "Default Policy"  # ZAP scan policy name
+  timeout_seconds: 3600                 # overall scan timeout
+
+# Report output
+report:
+  output_dir: "output"
+  formats:                              # html and/or pdf
+    - html
+    - pdf
+  organisation: "Government Cybersecurity Division"
+  classification: "CONFIDENTIAL"
+
+# Demo / CI mode – uses MockScanner, no live ZAP needed
+demo_mode: true
