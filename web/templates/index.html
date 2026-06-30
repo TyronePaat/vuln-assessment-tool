@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VA Tool — Web Application Vulnerability Assessment</title>
+<title>Vulnerability Assessment Tool — Dinas Kominfo Provinsi Sulawesi Utara</title>
 <style>
   /* ── Tokens ── */
   :root {
@@ -74,18 +74,6 @@
     color: rgba(255,255,255,.6);
     letter-spacing: .06em;
     text-transform: uppercase;
-  }
-
-  .header-badge {
-    font-size: .68rem;
-    background: rgba(59,158,255,.15);
-    border: 1px solid rgba(59,158,255,.4);
-    color: var(--accent);
-    padding: .25rem .6rem;
-    border-radius: 3px;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    font-weight: 600;
   }
 
   /* ── Main layout ── */
@@ -311,30 +299,6 @@
 
   .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
 
-  /* ── Info box ── */
-  .info-box {
-    background: #eef5ff;
-    border: 1px solid #b3ccf0;
-    border-left: 4px solid var(--mid-blue);
-    border-radius: var(--radius);
-    padding: .85rem 1rem;
-    font-size: .82rem;
-    color: var(--text);
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
-  }
-  .info-box strong { color: var(--navy); }
-
-  /* ── Footer ── */
-  footer {
-    background: var(--navy);
-    color: rgba(255,255,255,.45);
-    font-size: .72rem;
-    text-align: center;
-    padding: .9rem 1rem;
-    margin-top: auto;
-  }
-
   /* ── Error banner ── */
   .error-banner {
     display: none;
@@ -350,7 +314,6 @@
 
   @media (max-width: 560px) {
     .form-row { flex-direction: column; }
-    .header-badge { display: none; }
   }
 </style>
 </head>
@@ -359,22 +322,15 @@
 <header>
   <div class="header-brand">
     <span class="shield">🛡️</span>
-    <h1>VA Tool<span>Web Application Vulnerability Assessment</span></h1>
+    <h1>Vulnerability Assessment Tool<span>Dinas Kominfo Provinsi Sulawesi Utara</span></h1>
   </div>
-  <span class="header-badge">OWASP Top 10 · 2021</span>
 </header>
 
 <main>
 
-  <div class="info-box">
-    <strong>⚠️ Authorised Use Only.</strong>
-    Only scan systems you own or have written permission to test.
-    By running a scan you confirm you have read and signed the Rules of Engagement.
-  </div>
-
   <!-- Scan input card -->
   <div class="card">
-    <div class="card-header">🔍 Target Configuration</div>
+    <div class="card-header">🔍 Target Website</div>
     <div class="card-body">
       <div class="form-row">
         <input
@@ -385,13 +341,13 @@
           autocomplete="off"
           spellcheck="false"
         />
-        <button class="btn-scan" id="scan-btn" onclick="startScan()">Start Scan</button>
+        <button class="btn-scan" id="scan-btn" onclick="startScan()">Mulai Scan</button>
       </div>
-      <p class="form-hint">Enter the full URL including the scheme (http:// or https://)</p>
+      <p class="form-hint">Masukkan URL lengkap beserta skema (http:// atau https://)</p>
 
       <div class="mode-pills">
-        <button class="pill active" id="pill-mock" onclick="selectMode('mock')">🧪 Demo Mode</button>
-        <button class="pill" id="pill-zap" onclick="selectMode('zap')">⚡ Live ZAP Scan</button>
+        <button class="pill active" id="pill-mock" onclick="selectMode('mock')">🧪 Demo</button>
+        <button class="pill" id="pill-zap" onclick="selectMode('zap')">⚡ Live Scan</button>
       </div>
     </div>
   </div>
@@ -399,11 +355,11 @@
   <!-- Progress panel -->
   <div id="progress-panel">
     <div class="card">
-      <div class="card-header">📡 Scan Progress</div>
+      <div class="card-header">📡 Progres Scan</div>
       <div class="card-body">
         <div class="status-row">
           <span class="status-dot" id="status-dot"></span>
-          <span class="status-label" id="status-label">Initialising…</span>
+          <span class="status-label" id="status-label">Memulai…</span>
         </div>
         <div class="progress-bar-track">
           <div class="progress-bar-fill" id="progress-fill"></div>
@@ -419,30 +375,26 @@
   <!-- Results panel -->
   <div id="results-panel">
     <div class="card">
-      <div class="card-header">✅ Scan Complete</div>
+      <div class="card-header">✅ Scan Selesai</div>
       <div class="card-body">
         <div class="results-header">
           <div class="results-title">
             <span class="check">✓</span>
-            <span id="results-title-text">7 findings identified</span>
+            <span id="results-title-text">7 temuan teridentifikasi</span>
           </div>
           <div class="risk-summary" id="risk-summary"></div>
         </div>
         <hr class="divider">
         <div class="action-row">
-          <a id="btn-view" class="btn-action btn-view" href="#" target="_blank">📄 View Report</a>
-          <a id="btn-download" class="btn-action btn-download" href="#">⬇️ Download HTML</a>
-          <button class="btn-action btn-new" onclick="resetScan()">🔄 New Scan</button>
+          <a id="btn-view" class="btn-action btn-view" href="#" target="_blank">📄 Lihat Laporan</a>
+          <a id="btn-download" class="btn-action btn-download" href="#">⬇️ Unduh HTML</a>
+          <button class="btn-action btn-new" onclick="resetScan()">🔄 Scan Baru</button>
         </div>
       </div>
     </div>
   </div>
 
 </main>
-
-<footer>
-  VA Tool — Internal Use · OWASP ZAP Integration · Not for public release
-</footer>
 
 <script>
   let scanMode = 'mock';
@@ -522,7 +474,6 @@
     const box = document.getElementById('log-box');
     const line = document.createElement('div');
     line.className = 'log-line ' + cls;
-    // Colour [INFO] / [DONE] / [ERROR] tags
     line.innerHTML = msg
       .replace(/\[INFO\]/g,  '<span style="color:#5bb5ff">[INFO]</span>')
       .replace(/\[DONE\]/g,  '<span style="color:#5adc7a">[DONE]</span>')
@@ -554,7 +505,7 @@
     const rc  = payload.risk_counts   || {};
 
     document.getElementById('results-title-text').textContent =
-      fc + ' finding' + (fc !== 1 ? 's' : '') + ' identified';
+      fc + ' temuan teridentifikasi';
 
     // Risk pills
     const summary = document.getElementById('risk-summary');
@@ -572,7 +523,6 @@
     document.getElementById('btn-view').href     = `/report/${rid}`;
     document.getElementById('btn-download').href = `/download/${rid}`;
 
-    // Smooth scroll to results
     document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -585,7 +535,6 @@
     document.getElementById('scan-btn').disabled = false;
   }
 
-  // Allow Enter key in URL field
   document.getElementById('target-url').addEventListener('keydown', e => {
     if (e.key === 'Enter') startScan();
   });

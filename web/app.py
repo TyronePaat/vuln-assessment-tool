@@ -124,7 +124,7 @@ def start_scan():
     target   = (data.get("target")    or "").strip()
     mode     = (data.get("mode")      or "mock").strip()
     zap_proxy = (data.get("zap_proxy") or "http://127.0.0.1:8080").strip()
-    api_key  = (data.get("api_key")   or "").strip()
+    api_key  = (data.get("api_key")   or "changeme").strip()
 
     if not target:
         return jsonify({"error": "Target URL is required."}), 400
@@ -168,10 +168,10 @@ def stream(job_id):
     def generate():
         while True:
             try:
-                line = log_q.get(timeout=60)
+                line = log_q.get(timeout=30)
             except queue.Empty:
-                yield "data: [TIMEOUT] No activity for 60 s.\n\n"
-                break
+                yield ": keepalive\n\n"
+                continue
 
             if line.startswith("__DONE__"):
                 report_id = line.replace("__DONE__", "")
