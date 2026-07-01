@@ -219,7 +219,24 @@ def stream(job_id):
 def dashboard():
     """All targets, last scan status/finding count/risk score, scan count."""
     targets = repo.list_targets_with_last_scan()
-    return render_template("dashboard.html", targets=targets)
+    portfolio = repo.get_portfolio_summary()
+
+    scored = [t for t in targets if t["last_risk_score"] is not None]
+    portfolio["avg_risk_score"] = (
+        round(sum(t["last_risk_score"] for t in scored) / len(scored), 1)
+        if scored else None
+    )
+    portfolio["high_risk_count"] = sum(1 for t in scored if t["last_risk_score"] >= 7)
+
+    # Untuk bar chart: hanya target dengan skor risiko terakhir, urut tertinggi dulu
+    risk_chart_data = sorted(scored, key=lambda t: t["last_risk_score"], reverse=True)
+
+    return render_template(
+        "dashboard.html",
+        targets=targets,
+        portfolio=portfolio,
+        risk_chart_data=risk_chart_data,
+    )
 
 
 @app.route("/target/<int:target_id>")

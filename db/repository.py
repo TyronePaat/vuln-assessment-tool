@@ -82,6 +82,34 @@ def list_targets_with_last_scan() -> list[dict]:
         return result
 
 
+def get_portfolio_summary() -> dict:
+    """
+    Ringkasan lintas SELURUH target -- dipakai di /dashboard untuk kartu
+    statistik atas (total temuan terbuka/diperbaiki portofolio). Skor
+    risiko rata-rata & jumlah target berisiko tinggi dihitung di app.py
+    dari list_targets_with_last_scan() supaya tidak query dua kali.
+    """
+    with _session() as db:
+        target_count = db.query(Target).count()
+        total_scans_done = db.query(ScanReport).filter_by(status="done").count()
+        open_findings = (
+            db.query(FindingHistory)
+            .filter(FindingHistory.resolved_at.is_(None))
+            .count()
+        )
+        resolved_findings = (
+            db.query(FindingHistory)
+            .filter(FindingHistory.resolved_at.isnot(None))
+            .count()
+        )
+        return {
+            "target_count":      target_count,
+            "total_scans_done":  total_scans_done,
+            "open_findings":     open_findings,
+            "resolved_findings": resolved_findings,
+        }
+
+
 # ---------------------------------------------------------------------------
 # Scan reports
 # ---------------------------------------------------------------------------
