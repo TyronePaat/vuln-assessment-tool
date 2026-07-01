@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Riwayat Scan — Vulnerability Assessment Tool</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --navy:      #0b2545;
@@ -180,6 +181,25 @@
   .trend-badge.stable    { background: var(--light-bg); color: var(--muted); border: 1.5px solid var(--border); }
   .trend-badge.insufficient_data { background: var(--light-bg); color: var(--muted); border: 1.5px solid var(--border); }
 
+  /* ── Trend chart ── */
+  .chart-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 6px rgba(11,37,69,.07);
+    padding: 1.1rem 1.25rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .chart-card .chart-title {
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--muted);
+    margin-bottom: .85rem;
+  }
+  .chart-card .chart-wrap { position: relative; height: 260px; }
+
   /* ── Finding status list ── */
   .section-label {
     font-size: .78rem;
@@ -261,6 +281,15 @@
       {% elif trend.trend == 'worsening' %}↑ Tren Memburuk
       {% elif trend.trend == 'stable' %}→ Stabil
       {% else %}— Data Belum Cukup{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if trend.risk_score_series and trend.risk_score_series|length >= 2 %}
+  <div class="chart-card">
+    <div class="chart-title">Tren Skor Risiko &amp; Jumlah Temuan</div>
+    <div class="chart-wrap">
+      <canvas id="trendChart"></canvas>
     </div>
   </div>
   {% endif %}
@@ -365,6 +394,81 @@
     }
   }
 </script>
+
+{% if trend.risk_score_series and trend.risk_score_series|length >= 2 %}
+{% set done_scans = (history | selectattr("status", "equalto", "done") | list) | reverse | list %}
+<script>
+  (function () {
+    const riskScores    = {{ trend.risk_score_series | tojson }};
+    const findingCounts = {{ trend.finding_count_series | tojson }};
+    const rawLabels      = {{ done_scans | map(attribute="started_at") | list | tojson }};
+    const labels = rawLabels.map(function (iso) {
+      if (!iso) return '';
+      return iso.replace('T', ' ').slice(0, 16);
+    });
+
+    const ctx = document.getElementById('trendChart');
+    if (!ctx) return;
+
+    new Chart(ctx, {
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Jumlah Temuan',
+            data: findingCounts,
+            backgroundColor: 'rgba(59, 158, 255, .35)',
+            borderColor: 'rgba(59, 158, 255, .6)',
+            borderWidth: 1,
+            yAxisID: 'yCount',
+            order: 2
+          },
+          {
+            type: 'line',
+            label: 'Skor Risiko',
+            data: riskScores,
+            borderColor: '#c0392b',
+            backgroundColor: '#c0392b',
+            pointBackgroundColor: '#c0392b',
+            tension: .3,
+            fill: false,
+            yAxisID: 'yRisk',
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } }
+        },
+        scales: {
+          x: {
+            ticks: { font: { size: 10 } },
+            grid: { display: false }
+          },
+          yRisk: {
+            type: 'linear',
+            position: 'left',
+            title: { display: true, text: 'Skor Risiko', font: { size: 11 } },
+            beginAtZero: true
+          },
+          yCount: {
+            type: 'linear',
+            position: 'right',
+            title: { display: true, text: 'Jumlah Temuan', font: { size: 11 } },
+            beginAtZero: true,
+            grid: { drawOnChartArea: false }
+          }
+        }
+      }
+    });
+  })();
+</script>
+{% endif %}
 
 </body>
 </html>
