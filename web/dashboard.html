@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Vulnerability Assessment Tool</title>
+<style>
+  :root {
+    --navy:      #0b2545;
+    --blue:      #1b4f8a;
+    --mid-blue:  #2e6db4;
+    --accent:    #3b9eff;
+    --light-bg:  #f0f5fb;
+    --white:     #ffffff;
+    --border:    #c8d9ee;
+    --text:      #1a2e4a;
+    --muted:     #5a738f;
+    --high:      #c0392b;
+    --medium:    #e67e22;
+    --low:       #27ae60;
+    --info:      #2980b9;
+    --radius:    6px;
+    --font-ui:   'Segoe UI', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-ui); background: var(--light-bg); color: var(--text); min-height: 100vh; }
+
+  header {
+    background: var(--navy);
+    color: var(--white);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    border-bottom: 3px solid var(--accent);
+    box-shadow: 0 2px 12px rgba(0,0,0,.35);
+  }
+  .header-brand { display: flex; align-items: center; gap: .75rem; }
+  .header-brand .shield { font-size: 1.5rem; filter: drop-shadow(0 0 6px rgba(59,158,255,.6)); }
+  .header-brand h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: .03em; line-height: 1.2; }
+  .header-brand h1 span { display: block; font-size: .7rem; font-weight: 400; color: rgba(255,255,255,.6); letter-spacing: .06em; text-transform: uppercase; }
+  .header-nav a { color: rgba(255,255,255,.8); text-decoration: none; font-size: .85rem; font-weight: 600; }
+  .header-nav a:hover { color: var(--white); }
+
+  main { max-width: 1040px; margin: 2.5rem auto; padding: 0 1.25rem; }
+
+  .page-title { font-size: 1.3rem; font-weight: 700; color: var(--navy); margin-bottom: 1.5rem; }
+
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 6px rgba(11,37,69,.07);
+    overflow: hidden;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: .87rem; }
+  thead th {
+    background: var(--blue);
+    color: var(--white);
+    text-align: left;
+    padding: .75rem 1rem;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--light-bg); }
+  tbody td { padding: .8rem 1rem; vertical-align: middle; }
+
+  .target-url { font-weight: 600; color: var(--navy); text-decoration: none; }
+  .target-url:hover { color: var(--mid-blue); }
+  .target-meta { font-size: .76rem; color: var(--muted); margin-top: .15rem; }
+
+  .badge {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .2rem .6rem;
+    border-radius: 99px;
+    border: 1.5px solid;
+  }
+  .badge.done    { color: var(--low);    border-color: var(--low);    background: #edfbf2; }
+  .badge.running { color: var(--info);   border-color: var(--info);   background: #eaf4fb; }
+  .badge.error   { color: var(--high);   border-color: var(--high);   background: #fdf0ef; }
+
+  .risk-num { font-weight: 700; }
+  .risk-num.high   { color: var(--high); }
+  .risk-num.medium { color: var(--medium); }
+  .risk-num.low    { color: var(--low); }
+
+  .empty-state {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: .9rem;
+  }
+
+  .scan-count-pill {
+    font-size: .76rem;
+    color: var(--muted);
+    background: var(--light-bg);
+    padding: .15rem .5rem;
+    border-radius: 99px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <span class="shield">🛡️</span>
+    <h1>Vulnerability Assessment Tool<span>Dinas Kominfo Provinsi Sulawesi Utara</span></h1>
+  </div>
+  <nav class="header-nav">
+    <a href="/">+ Scan Baru</a>
+  </nav>
+</header>
+
+<main>
+  <div class="page-title">Dashboard</div>
+
+  <div class="card">
+    {% if targets %}
+    <table>
+      <thead>
+        <tr>
+          <th>Target</th>
+          <th>Status Terakhir</th>
+          <th>Temuan</th>
+          <th>Skor Risiko</th>
+          <th>Jumlah Scan</th>
+          <th>Scan Terakhir</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in targets %}
+        <tr onclick="window.location='/target/{{ t.target_id }}'" style="cursor:pointer;">
+          <td>
+            <a class="target-url" href="/target/{{ t.target_id }}">{{ t.url }}</a>
+            {% if t.label %}<div class="target-meta">{{ t.label }}</div>{% endif %}
+          </td>
+          <td>
+            {% if t.last_status == 'done' %}
+              <span class="badge done">Selesai</span>
+            {% elif t.last_status == 'running' %}
+              <span class="badge running">Berjalan</span>
+            {% elif t.last_status == 'error' %}
+              <span class="badge error">Gagal</span>
+            {% else %}
+              <span class="badge">—</span>
+            {% endif %}
+          </td>
+          <td>{{ t.last_finding_count if t.last_finding_count is not none else '—' }}</td>
+          <td>
+            {% if t.last_risk_score is not none %}
+              {% if t.last_risk_score >= 7 %}
+                <span class="risk-num high">{{ "%.1f"|format(t.last_risk_score) }}</span>
+              {% elif t.last_risk_score >= 4 %}
+                <span class="risk-num medium">{{ "%.1f"|format(t.last_risk_score) }}</span>
+              {% else %}
+                <span class="risk-num low">{{ "%.1f"|format(t.last_risk_score) }}</span>
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td><span class="scan-count-pill">{{ t.scan_count }}x</span></td>
+          <td>{{ t.last_scan_at or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">Belum ada scan yang tercatat. Mulai scan pertama dari halaman utama.</div>
+    {% endif %}
+  </div>
+</main>
+
+</body>
+</html>

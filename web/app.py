@@ -29,11 +29,21 @@ sys.path.insert(0, str(BASE_DIR.parent))
 from scanner.zap_scanner import MockScanner, ZAPScanner  # noqa: E402
 from scanner.parser import AlertParser                    # noqa: E402
 from report.generator import ReportGenerator             # noqa: E402
+from db.models import init_db                               # noqa: E402  (SQLAlchemy)
+from db import repository as repo                            # noqa: E402
+from scanner import aggregator as agg                        # noqa: E402
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "va-tool-dev-secret")
 
-# In-memory job store  { job_id: { status, log_queue, result } }
+# Persisted scan results now live in SQLite (db/models.py, db/repository.py) —
+# this replaces the result-bearing fields that used to live only in JOBS.
+init_db()
+
+# In-memory job store — kept ONLY for what truly cannot survive a restart:
+# the live log_queue and the running scan thread. Everything else (status,
+# finding_count, risk_counts, report_id) is now persisted via db/repository.py
+# so it survives a Flask restart instead of disappearing with JOBS.
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
 
@@ -44,6 +54,9 @@ JOBS_LOCK = threading.Lock()
 def run_mock_scan(job_id: str, target: str, log_q: queue.Queue, use_zap: bool = False,
                   zap_proxy: str = "http://127.0.0.1:8080", api_key: str = ""):
     """Run the real scanner pipeline and stream log lines to the browser."""
+    source = "live" if use_zap else "mock"
+    repo.create_scan_report(job_id, target, source=source)
+
     try:
         # ── 1. Scan ──────────────────────────────────────────────────────────
         log_q.put("[INFO]  Initialising scanner…")
@@ -99,6 +112,10 @@ def run_mock_scan(job_id: str, target: str, log_q: queue.Queue, use_zap: bool = 
             JOBS[job_id]["finding_count"] = len(alert_dicts)
             JOBS[job_id]["risk_counts"]   = risk_counts
 
+        # Persist the result so it survives a Flask restart (replaces the
+        # old behavior where this only ever lived in the JOBS dict).
+        repo.complete_scan_report(job_id, summary, report_path=f"{job_id}.html")
+
         log_q.put(f"[DONE]  Scan complete — {len(alert_dicts)} findings identified")
         log_q.put(f"__DONE__{job_id}")
 
@@ -107,6 +124,7 @@ def run_mock_scan(job_id: str, target: str, log_q: queue.Queue, use_zap: bool = 
         log_q.put("__ERROR__")
         with JOBS_LOCK:
             JOBS[job_id]["status"] = "error"
+        repo.fail_scan_report(job_id, str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +142,7 @@ def start_scan():
     target   = (data.get("target")    or "").strip()
     mode     = (data.get("mode")      or "mock").strip()
     zap_proxy = (data.get("zap_proxy") or "http://127.0.0.1:8080").strip()
-    api_key  = (data.get("api_key")   or "changeme").strip()
+    api_key  = (data.get("api_key")   or "").strip()
 
     if not target:
         return jsonify({"error": "Target URL is required."}), 400
@@ -168,10 +186,10 @@ def stream(job_id):
     def generate():
         while True:
             try:
-                line = log_q.get(timeout=30)
+                line = log_q.get(timeout=60)
             except queue.Empty:
-                yield ": keepalive\n\n"
-                continue
+                yield "data: [TIMEOUT] No activity for 60 s.\n\n"
+                break
 
             if line.startswith("__DONE__"):
                 report_id = line.replace("__DONE__", "")
@@ -195,6 +213,68 @@ def stream(job_id):
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.route("/dashboard")
+def dashboard():
+    """All targets, last scan status/finding count/risk score, scan count."""
+    targets = repo.list_targets_with_last_scan()
+    return render_template("dashboard.html", targets=targets)
+
+
+@app.route("/target/<int:target_id>")
+def target_history(target_id):
+    """Scan history, risk trend, and finding statuses for one target."""
+    history = repo.get_scan_history(target_id)
+    if not history:
+        abort(404)
+
+    trend = agg.get_target_trend(target_id)
+    finding_statuses = agg.get_finding_statuses(target_id)
+
+    return render_template(
+        "target_history.html",
+        target_id=target_id,
+        history=history,
+        trend=trend,
+        finding_statuses=finding_statuses,
+    )
+
+
+@app.route("/compare/<scan_id_a>/<scan_id_b>")
+def compare_scans(scan_id_a, scan_id_b):
+    """Diff two scans of the same target — fixed, new, still open."""
+    try:
+        diff = agg.diff_scans(scan_id_a, scan_id_b)
+    except ValueError as e:
+        abort(400, description=str(e))
+
+    # Enrich each finding name with full details for the template
+    scan_a = repo.get_scan_report(diff.from_scan_id)
+    scan_b = repo.get_scan_report(diff.to_scan_id)
+
+    findings_a = {f["dedup_key"]: f for f in repo.get_findings_for_scan(diff.from_scan_id)}
+    findings_b = {f["dedup_key"]: f for f in repo.get_findings_for_scan(diff.to_scan_id)}
+
+    # Rebuild diff with full finding dicts instead of just names
+    from db.models import SessionLocal, Finding
+    db = SessionLocal()
+    try:
+        rows_a = {f.dedup_key: f for f in db.query(Finding).filter_by(scan_report_id=diff.from_scan_id).all()}
+        rows_b = {f.dedup_key: f for f in db.query(Finding).filter_by(scan_report_id=diff.to_scan_id).all()}
+    finally:
+        db.close()
+
+    fixed      = [rows_a[k].to_dict() for k in rows_a if k not in rows_b]
+    new        = [rows_b[k].to_dict() for k in rows_b if k not in rows_a]
+    still_open = [rows_b[k].to_dict() for k in rows_b if k in rows_a]
+
+    return render_template(
+        "compare.html",
+        scan_a=scan_a, scan_b=scan_b,
+        target_id=diff.target_id,
+        fixed=fixed, new=new, still_open=still_open,
+    )
 
 
 @app.route("/report/<report_id>")

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perbandingan Scan — Vulnerability Assessment Tool</title>
+<style>
+  :root {
+    --navy:      #0b2545;
+    --blue:      #1b4f8a;
+    --mid-blue:  #2e6db4;
+    --accent:    #3b9eff;
+    --light-bg:  #f0f5fb;
+    --white:     #ffffff;
+    --border:    #c8d9ee;
+    --text:      #1a2e4a;
+    --muted:     #5a738f;
+    --high:      #c0392b;
+    --medium:    #e67e22;
+    --low:       #27ae60;
+    --fixed-bg:  #edfbf2;
+    --fixed-border: #a8dbb8;
+    --new-bg:    #fdf0ef;
+    --new-border:   #e5a4a0;
+    --open-bg:   #fef9ec;
+    --open-border:  #e8d48a;
+    --radius:    6px;
+    --font-ui:   'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'Consolas', 'Courier New', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-ui); background: var(--light-bg); color: var(--text); min-height: 100vh; }
+
+  header {
+    background: var(--navy); color: var(--white);
+    padding: 0 2rem; display: flex; align-items: center;
+    justify-content: space-between; height: 60px;
+    border-bottom: 3px solid var(--accent);
+    box-shadow: 0 2px 12px rgba(0,0,0,.35);
+  }
+  .header-brand { display: flex; align-items: center; gap: .75rem; }
+  .header-brand .shield { font-size: 1.5rem; filter: drop-shadow(0 0 6px rgba(59,158,255,.6)); }
+  .header-brand h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: .03em; line-height: 1.2; }
+  .header-brand h1 span { display: block; font-size: .7rem; font-weight: 400; color: rgba(255,255,255,.6); letter-spacing: .06em; text-transform: uppercase; }
+  .header-nav a { color: rgba(255,255,255,.8); text-decoration: none; font-size: .85rem; font-weight: 600; margin-left: 1.25rem; }
+  .header-nav a:hover { color: var(--white); }
+
+  main { max-width: 1000px; margin: 2.5rem auto; padding: 0 1.25rem; }
+
+  .breadcrumb { font-size: .8rem; color: var(--muted); margin-bottom: .5rem; }
+  .breadcrumb a { color: var(--mid-blue); text-decoration: none; }
+
+  .page-title { font-size: 1.3rem; font-weight: 700; color: var(--navy); margin-bottom: 1.5rem; }
+
+  /* Scan pair header */
+  .scan-pair {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1rem;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 1px 6px rgba(11,37,69,.07);
+  }
+  .scan-box { font-size: .84rem; }
+  .scan-box .label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .3rem; }
+  .scan-box .scan-id { font-family: var(--font-mono); font-size: .77rem; color: var(--muted); }
+  .scan-box .date { font-weight: 600; color: var(--text); }
+  .scan-box .counts { margin-top: .4rem; display: flex; gap: .4rem; flex-wrap: wrap; }
+  .arrow { font-size: 1.4rem; color: var(--mid-blue); text-align: center; }
+
+  /* Summary bar */
+  .summary-bar {
+    display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.75rem;
+  }
+  .summary-tile {
+    flex: 1; min-width: 140px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .85rem 1.1rem;
+    box-shadow: 0 1px 4px rgba(11,37,69,.06);
+    text-align: center;
+  }
+  .summary-tile .num { font-size: 1.5rem; font-weight: 700; }
+  .summary-tile .lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: .2rem; }
+  .summary-tile.fixed  .num { color: var(--low); }
+  .summary-tile.new    .num { color: var(--high); }
+  .summary-tile.open   .num { color: var(--medium); }
+
+  /* Section */
+  .section { margin-bottom: 2rem; }
+  .section-header {
+    display: flex; align-items: center; gap: .6rem;
+    font-size: .78rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; padding: .6rem .85rem;
+    border-radius: var(--radius) var(--radius) 0 0;
+    border: 1px solid;
+  }
+  .section-header.fixed  { background: var(--fixed-bg); border-color: var(--fixed-border); color: #1e6b3a; }
+  .section-header.new    { background: var(--new-bg);   border-color: var(--new-border);   color: #7b1a1a; }
+  .section-header.open   { background: var(--open-bg);  border-color: var(--open-border);  color: #7a5a00; }
+  .section-body {
+    border: 1px solid; border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden;
+  }
+  .section-body.fixed { border-color: var(--fixed-border); }
+  .section-body.new   { border-color: var(--new-border); }
+  .section-body.open  { border-color: var(--open-border); }
+
+  .finding-row {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; gap: 1rem;
+    padding: .75rem 1rem; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    background: var(--white);
+  }
+  .finding-row:last-child { border-bottom: none; }
+  .finding-row:hover { background: var(--light-bg); }
+
+  .finding-name { font-size: .87rem; font-weight: 600; color: var(--text); }
+  .finding-meta { font-size: .74rem; color: var(--muted); margin-top: .15rem; font-family: var(--font-mono); word-break: break-all; }
+  .finding-owasp { font-size: .72rem; color: var(--mid-blue); margin-top: .2rem; }
+
+  .risk-pill {
+    font-size: .72rem; font-weight: 700;
+    padding: .2rem .6rem; border-radius: 99px;
+    border: 1.5px solid; flex-shrink: 0;
+  }
+  .risk-pill.High          { color: var(--high);   border-color: var(--high);   background: #fdf0ef; }
+  .risk-pill.Medium        { color: var(--medium); border-color: var(--medium); background: #fef6ec; }
+  .risk-pill.Low           { color: var(--low);    border-color: var(--low);    background: #edfbf2; }
+  .risk-pill.Informational { color: var(--muted);  border-color: var(--border); background: var(--light-bg); }
+
+  .empty-section {
+    padding: 1.25rem 1rem;
+    font-size: .85rem; color: var(--muted);
+    background: var(--white); text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <span class="shield">🛡️</span>
+    <h1>Vulnerability Assessment Tool<span>Dinas Kominfo Provinsi Sulawesi Utara</span></h1>
+  </div>
+  <nav class="header-nav">
+    <a href="/target/{{ target_id }}">← Riwayat</a>
+    <a href="/dashboard">Dashboard</a>
+  </nav>
+</header>
+
+<main>
+  <div class="breadcrumb">
+    <a href="/dashboard">Dashboard</a> /
+    <a href="/target/{{ target_id }}">Riwayat Target</a> /
+    Perbandingan Scan
+  </div>
+  <div class="page-title">Perbandingan Scan</div>
+
+  <!-- Scan pair -->
+  <div class="scan-pair">
+    <div class="scan-box">
+      <div class="label">Scan Sebelumnya</div>
+      <div class="date">{{ scan_a.started_at }}</div>
+      <div class="scan-id">{{ scan_a.id[:8] }}…</div>
+      <div class="counts">
+        {% if scan_a.high_count %}<span class="risk-pill High">{{ scan_a.high_count }} High</span>{% endif %}
+        {% if scan_a.medium_count %}<span class="risk-pill Medium">{{ scan_a.medium_count }} Medium</span>{% endif %}
+        {% if scan_a.low_count %}<span class="risk-pill Low">{{ scan_a.low_count }} Low</span>{% endif %}
+      </div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="scan-box">
+      <div class="label">Scan Terbaru</div>
+      <div class="date">{{ scan_b.started_at }}</div>
+      <div class="scan-id">{{ scan_b.id[:8] }}…</div>
+      <div class="counts">
+        {% if scan_b.high_count %}<span class="risk-pill High">{{ scan_b.high_count }} High</span>{% endif %}
+        {% if scan_b.medium_count %}<span class="risk-pill Medium">{{ scan_b.medium_count }} Medium</span>{% endif %}
+        {% if scan_b.low_count %}<span class="risk-pill Low">{{ scan_b.low_count }} Low</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-bar">
+    <div class="summary-tile fixed">
+      <div class="num">{{ fixed | length }}</div>
+      <div class="lbl">✓ Diperbaiki</div>
+    </div>
+    <div class="summary-tile new">
+      <div class="num">{{ new | length }}</div>
+      <div class="lbl">⚠ Temuan Baru</div>
+    </div>
+    <div class="summary-tile open">
+      <div class="num">{{ still_open | length }}</div>
+      <div class="lbl">→ Masih Terbuka</div>
+    </div>
+  </div>
+
+  <!-- Fixed findings -->
+  <div class="section">
+    <div class="section-header fixed">✓ Diperbaiki ({{ fixed | length }})</div>
+    <div class="section-body fixed">
+      {% if fixed %}
+        {% for f in fixed %}
+        <div class="finding-row">
+          <div>
+            <div class="finding-name">{{ f.name }}</div>
+            <div class="finding-meta">{{ f.url }}{% if f.param %} · param: {{ f.param }}{% endif %}</div>
+            {% if f.owasp_id %}<div class="finding-owasp">{{ f.owasp_id }} · {{ f.owasp_name }}</div>{% endif %}
+          </div>
+          <span class="risk-pill {{ f.risk }}">{{ f.risk }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-section">Tidak ada temuan yang diperbaiki.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- New findings -->
+  <div class="section">
+    <div class="section-header new">⚠ Temuan Baru ({{ new | length }})</div>
+    <div class="section-body new">
+      {% if new %}
+        {% for f in new %}
+        <div class="finding-row">
+          <div>
+            <div class="finding-name">{{ f.name }}</div>
+            <div class="finding-meta">{{ f.url }}{% if f.param %} · param: {{ f.param }}{% endif %}</div>
+            {% if f.owasp_id %}<div class="finding-owasp">{{ f.owasp_id }} · {{ f.owasp_name }}</div>{% endif %}
+          </div>
+          <span class="risk-pill {{ f.risk }}">{{ f.risk }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-section">Tidak ada temuan baru.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Still open -->
+  <div class="section">
+    <div class="section-header open">→ Masih Terbuka ({{ still_open | length }})</div>
+    <div class="section-body open">
+      {% if still_open %}
+        {% for f in still_open %}
+        <div class="finding-row">
+          <div>
+            <div class="finding-name">{{ f.name }}</div>
+            <div class="finding-meta">{{ f.url }}{% if f.param %} · param: {{ f.param }}{% endif %}</div>
+            {% if f.owasp_id %}<div class="finding-owasp">{{ f.owasp_id }} · {{ f.owasp_name }}</div>{% endif %}
+          </div>
+          <span class="risk-pill {{ f.risk }}">{{ f.risk }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-section">Tidak ada temuan yang masih terbuka.</div>
+      {% endif %}
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

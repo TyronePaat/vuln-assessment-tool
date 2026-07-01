@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Riwayat Scan — Vulnerability Assessment Tool</title>
+<style>
+  :root {
+    --navy:      #0b2545;
+    --blue:      #1b4f8a;
+    --mid-blue:  #2e6db4;
+    --accent:    #3b9eff;
+    --light-bg:  #f0f5fb;
+    --white:     #ffffff;
+    --border:    #c8d9ee;
+    --text:      #1a2e4a;
+    --muted:     #5a738f;
+    --high:      #c0392b;
+    --medium:    #e67e22;
+    --low:       #27ae60;
+    --info:      #2980b9;
+    --radius:    6px;
+    --font-ui:   'Segoe UI', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-ui); background: var(--light-bg); color: var(--text); min-height: 100vh; }
+
+  header {
+    background: var(--navy);
+    color: var(--white);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    border-bottom: 3px solid var(--accent);
+    box-shadow: 0 2px 12px rgba(0,0,0,.35);
+  }
+  .header-brand { display: flex; align-items: center; gap: .75rem; }
+  .header-brand .shield { font-size: 1.5rem; filter: drop-shadow(0 0 6px rgba(59,158,255,.6)); }
+  .header-brand h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: .03em; line-height: 1.2; }
+  .header-brand h1 span { display: block; font-size: .7rem; font-weight: 400; color: rgba(255,255,255,.6); letter-spacing: .06em; text-transform: uppercase; }
+  .header-nav a { color: rgba(255,255,255,.8); text-decoration: none; font-size: .85rem; font-weight: 600; margin-left: 1.25rem; }
+  .header-nav a:hover { color: var(--white); }
+
+  main { max-width: 900px; margin: 2.5rem auto; padding: 0 1.25rem; }
+
+  .breadcrumb { font-size: .8rem; color: var(--muted); margin-bottom: .5rem; }
+  .breadcrumb a { color: var(--mid-blue); text-decoration: none; }
+
+  .page-title { font-size: 1.3rem; font-weight: 700; color: var(--navy); margin-bottom: 1.5rem; }
+
+  .timeline { display: flex; flex-direction: column; gap: .9rem; }
+
+  .scan-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 6px rgba(11,37,69,.07);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .scan-left { display: flex; align-items: center; gap: .9rem; }
+
+  .source-tag {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .2rem .55rem;
+    border-radius: 4px;
+    background: var(--light-bg);
+    color: var(--mid-blue);
+    border: 1px solid var(--border);
+  }
+  .source-tag.imported { color: #7a5ad1; }
+
+  .scan-date { font-size: .85rem; font-weight: 600; color: var(--text); }
+  .scan-sub  { font-size: .76rem; color: var(--muted); margin-top: .1rem; }
+
+  .badge {
+    display: inline-block;
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .2rem .6rem;
+    border-radius: 99px;
+    border: 1.5px solid;
+  }
+  .badge.done    { color: var(--low);  border-color: var(--low);  background: #edfbf2; }
+  .badge.running { color: var(--info); border-color: var(--info); background: #eaf4fb; }
+  .badge.error   { color: var(--high); border-color: var(--high); background: #fdf0ef; }
+
+  .risk-pills { display: flex; gap: .4rem; }
+  .risk-pill {
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .15rem .55rem;
+    border-radius: 99px;
+    border: 1.5px solid;
+  }
+  .risk-pill.high   { color: var(--high);   border-color: var(--high);   background: #fdf0ef; }
+  .risk-pill.medium { color: var(--medium); border-color: var(--medium); background: #fef6ec; }
+  .risk-pill.low    { color: var(--low);    border-color: var(--low);    background: #edfbf2; }
+
+  .scan-actions a {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--mid-blue);
+    text-decoration: none;
+    margin-left: .9rem;
+  }
+  .scan-actions a:hover { color: var(--blue); }
+
+  /* ── Compare selector ── */
+  .compare-bar {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .75rem 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .compare-hint { font-size: .82rem; color: var(--muted); }
+  .compare-hint strong { color: var(--mid-blue); }
+  .btn-compare {
+    padding: .5rem 1.1rem;
+    background: var(--mid-blue);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    font-size: .83rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    display: none;
+  }
+  .btn-compare:hover { background: var(--blue); }
+  .scan-card.selected { border-color: var(--mid-blue); box-shadow: 0 0 0 2px rgba(46,109,180,.25); }
+  .scan-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--mid-blue); flex-shrink: 0; }
+
+  /* ── Trend summary ── */
+  .trend-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 6px rgba(11,37,69,.07);
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .trend-stats { display: flex; gap: 1.75rem; flex-wrap: wrap; }
+  .trend-stat { text-align: left; }
+  .trend-stat .num { font-size: 1.3rem; font-weight: 700; color: var(--navy); }
+  .trend-stat .lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-top: .1rem; }
+
+  .trend-badge {
+    font-size: .78rem;
+    font-weight: 700;
+    padding: .35rem .8rem;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+  }
+  .trend-badge.improving { background: #edfbf2; color: var(--low); border: 1.5px solid var(--low); }
+  .trend-badge.worsening { background: #fdf0ef; color: var(--high); border: 1.5px solid var(--high); }
+  .trend-badge.stable    { background: var(--light-bg); color: var(--muted); border: 1.5px solid var(--border); }
+  .trend-badge.insufficient_data { background: var(--light-bg); color: var(--muted); border: 1.5px solid var(--border); }
+
+  /* ── Finding status list ── */
+  .section-label {
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--muted);
+    margin: 2rem 0 .75rem;
+  }
+  .finding-row {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .7rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .5rem;
+    flex-wrap: wrap;
+  }
+  .finding-name { font-size: .87rem; font-weight: 600; color: var(--text); }
+  .finding-meta { font-size: .74rem; color: var(--muted); margin-top: .1rem; }
+  .status-tag {
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .18rem .55rem;
+    border-radius: 99px;
+    border: 1.5px solid;
+    flex-shrink: 0;
+  }
+  .status-tag.open     { color: var(--high); border-color: var(--high); background: #fdf0ef; }
+  .status-tag.resolved { color: var(--low);  border-color: var(--low);  background: #edfbf2; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <span class="shield">🛡️</span>
+    <h1>Vulnerability Assessment Tool<span>Dinas Kominfo Provinsi Sulawesi Utara</span></h1>
+  </div>
+  <nav class="header-nav">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/">+ Scan Baru</a>
+  </nav>
+</header>
+
+<main>
+  <div class="breadcrumb"><a href="/dashboard">Dashboard</a> / Riwayat Target</div>
+  <div class="page-title">Riwayat Scan</div>
+  <div class="scan-sub" style="margin-bottom:1.25rem; font-size:.85rem; color:var(--muted);">{{ trend.url }}</div>
+
+  {% if trend.scan_count > 0 %}
+  <div class="trend-card">
+    <div class="trend-stats">
+      <div class="trend-stat">
+        <div class="num">{{ trend.scan_count }}</div>
+        <div class="lbl">Total Scan</div>
+      </div>
+      <div class="trend-stat">
+        <div class="num" style="color:var(--high)">{{ trend.open_findings }}</div>
+        <div class="lbl">Masih Terbuka</div>
+      </div>
+      <div class="trend-stat">
+        <div class="num" style="color:var(--low)">{{ trend.resolved_findings }}</div>
+        <div class="lbl">Sudah Diperbaiki</div>
+      </div>
+      {% if trend.risk_score_series %}
+      <div class="trend-stat">
+        <div class="num">{{ "%.1f"|format(trend.risk_score_series[-1]) }}</div>
+        <div class="lbl">Skor Risiko Terakhir</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="trend-badge {{ trend.trend }}">
+      {% if trend.trend == 'improving' %}↓ Tren Membaik
+      {% elif trend.trend == 'worsening' %}↑ Tren Memburuk
+      {% elif trend.trend == 'stable' %}→ Stabil
+      {% else %}— Data Belum Cukup{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="section-label">Riwayat Scan</div>
+
+  {% if history | length >= 2 %}
+  <div class="compare-bar">
+    <span class="compare-hint">Pilih <strong>2 scan</strong> untuk membandingkan temuan</span>
+    <a class="btn-compare" id="btn-compare" href="#">⇄ Bandingkan</a>
+  </div>
+  {% endif %}
+
+  {% if history %}
+  <div class="timeline">
+    {% for scan in history %}
+    <div class="scan-card" id="card-{{ scan.id }}">
+      <div class="scan-left">
+        {% if history | length >= 2 and scan.status == 'done' %}
+        <input type="checkbox" class="scan-checkbox" value="{{ scan.id }}" onchange="updateCompare(this)">
+        {% endif %}
+        <span class="source-tag {{ scan.source }}">{{ scan.source }}</span>
+        <div>
+          <div class="scan-date">{{ scan.started_at }}</div>
+          <div class="scan-sub">
+            {% if scan.status == 'done' %}
+              <span class="badge done">Selesai</span>
+            {% elif scan.status == 'running' %}
+              <span class="badge running">Berjalan</span>
+            {% elif scan.status == 'error' %}
+              <span class="badge error">Gagal</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="risk-pills">
+        {% if scan.high_count %}<span class="risk-pill high">{{ scan.high_count }} High</span>{% endif %}
+        {% if scan.medium_count %}<span class="risk-pill medium">{{ scan.medium_count }} Medium</span>{% endif %}
+        {% if scan.low_count %}<span class="risk-pill low">{{ scan.low_count }} Low</span>{% endif %}
+      </div>
+
+      <div class="scan-actions">
+        {% if scan.status == 'done' %}
+          <a href="/report/{{ scan.id }}" target="_blank">Lihat Laporan</a>
+          <a href="/download/{{ scan.id }}">Unduh HTML</a>
+        {% elif scan.status == 'error' %}
+          <span style="font-size:.8rem;color:var(--muted)">{{ scan.error_message }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">Tidak ada riwayat scan untuk target ini.</div>
+  {% endif %}
+
+  {% if finding_statuses %}
+  <div class="section-label">Status Temuan</div>
+  {% for f in finding_statuses %}
+  <div class="finding-row">
+    <div>
+      <div class="finding-name">{{ f.name }}</div>
+      <div class="finding-meta">
+        {{ f.risk }} · pertama terdeteksi {{ f.first_seen_at }}
+        {% if f.status == 'resolved' %} · diperbaiki {{ f.resolved_at }}{% endif %}
+        · muncul di {{ f.scans_seen_in }} scan
+      </div>
+    </div>
+    <span class="status-tag {{ f.status }}">
+      {{ 'Terbuka' if f.status == 'open' else 'Diperbaiki' }}
+    </span>
+  </div>
+  {% endfor %}
+  {% endif %}
+</main>
+
+<script>
+  const selected = [];
+  const btn = document.getElementById('btn-compare');
+
+  function updateCompare(cb) {
+    const card = document.getElementById('card-' + cb.value);
+    if (cb.checked) {
+      if (selected.length >= 2) {
+        cb.checked = false;
+        return;
+      }
+      selected.push(cb.value);
+      card.classList.add('selected');
+    } else {
+      const idx = selected.indexOf(cb.value);
+      if (idx > -1) selected.splice(idx, 1);
+      card.classList.remove('selected');
+    }
+
+    if (selected.length === 2 && btn) {
+      btn.href = `/compare/${selected[0]}/${selected[1]}`;
+      btn.style.display = 'inline-block';
+    } else if (btn) {
+      btn.style.display = 'none';
+    }
+  }
+</script>
+
+</body>
+</html>
